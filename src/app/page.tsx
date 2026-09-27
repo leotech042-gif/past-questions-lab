@@ -26,7 +26,7 @@ export default function Home() {
   const [uploadStep, setUploadStep] = useState(0);
   const [uploadDone, setUploadDone] = useState(false);
   const [tutorMessages, setTutorMessages] = useState<{ role: "user" | "ai"; text: string }[]>([
-    { role: "ai", text: "Hello! I am your AI Tutor for CSC 106. Ask about any question or concept from the study guide." },
+    { role: "ai", text: "Hello! I am your AI Tutor and class assistant for CSC 106. Ask me to explain any topic like a class — buses, 2's complement, interrupts, memory decoding, assembly, ADC/DAC, flags, and more." },
   ]);
   const [tutorInput, setTutorInput] = useState("");
 
@@ -111,6 +111,37 @@ export default function Home() {
     return true;
   }), [filterTopic, filterDiff, search]);
 
+  const askTutor = () => {
+    if (!tutorInput.trim()) return;
+    const msg = tutorInput.trim();
+    setTutorMessages((m) => [...m, { role: "user", text: msg }]);
+    setTutorInput("");
+    const l = msg.toLowerCase();
+    let reply = "";
+    if (l.includes("2's") || l.includes("2s") || l.includes("complement") || l.includes("twos")) {
+      reply = "CLASS: 2's Complement\n\n1) Why: Subtraction becomes addition (A - B = A + (-B)). ALU only needs an adder.\n2) Form -N: invert all bits, then add 1.\n3) 8-bit range: -128 to +127.\n4) One zero only (all bits 0).\n5) Example: 00101101 -> invert 11010010 -> +1 -> 11010011.\n\nExam trap: overflow when carry into sign bit differs from carry out of sign bit.";
+    } else if (l.includes("data bus") || l.includes("bidirectional") || (l.includes("bus") && (l.includes("three") || l.includes("address")))) {
+      reply = "CLASS: Three-Bus System\n\n• Address Bus — unidirectional (CPU to memory/I/O). 8085: 16 bits = 64 KB.\n• Data Bus — bidirectional. Same wires for read and write. 8085: 8 bits.\n• Control Bus — mixed (RD*, WR*, IO/M*, ALE, READY, HOLD/HLDA).\n\nData must be bidirectional because the CPU both fetches from and writes to memory.";
+    } else if (l.includes("polling") || l.includes("interrupt") || l.includes("trap") || l.includes("rst") || l.includes("dma")) {
+      reply = "CLASS: Polling vs Interrupts vs DMA\n\nPolling: CPU checks status repeatedly. Simple but wastes cycles.\nInterrupts: Device signals only when ready.\n\n8085 priority (high to low): TRAP (non-maskable) > RST7.5 > RST6.5 > RST5.5 > INTR (non-vectored).\nVectors: TRAP 0024H, RST5.5 002CH, RST6.5 0034H, RST7.5 003CH.\nDMA: Device takes buses via HOLD/HLDA and moves data without the CPU.";
+    } else if (l.includes("ale") || l.includes("multiplex") || l.includes("ad0")) {
+      reply = "CLASS: ALE and Multiplexed Bus\n\nAD0-AD7 carry address in T1, then data later. ALE pulses so an external latch captures the lower address byte. A8-A15 are not multiplexed.";
+    } else if (l.includes("memory") || l.includes("decoding") || l.includes("foldback") || l.includes("chip select") || l.includes("chip-select")) {
+      reply = "CLASS: Memory Decoding\n\nFull decoding: every high-order bit checked -> unique range per chip.\nPartial decoding: some bits ignored -> foldback (same chip at multiple addresses).\nExample: 2KB chip needs A0-A10; A11 selects between two chips starting at 0000H.";
+    } else if (l.includes("von neumann") || l.includes("harvard") || l.includes("architecture")) {
+      reply = "CLASS: Von Neumann vs Harvard\n\nVon Neumann: shared memory for code and data, one bus (bottleneck). 8085/8086.\nHarvard: separate instruction and data memories/buses — can fetch both at once. Most MCUs.";
+    } else if (l.includes("assembly") || l.includes("mvi") || l.includes("mov") || l.includes("instruction") || l.includes("opcode") || l.includes("flag")) {
+      reply = "CLASS: 8085 Instructions & Flags\n\nMVI r,data = load immediate. MOV r1,r2 = copy. MOV r,M uses HL as address.\nCALL pushes return address then jumps. RST n vectors to 8*n.\nFlags used: S Z AC P CY. Important: INR/DCR do NOT affect Carry (classic exam trap).\nPUSH PSW saves A + flags.";
+    } else if (l.includes("adc") || l.includes("dac") || l.includes("sensor") || l.includes("control") || l.includes("process")) {
+      reply = "CLASS: Process Control Loop\n\nSensor -> ADC -> CPU (compare with setpoint) -> DAC -> Actuator -> process -> back to sensor.\nADC = eyes (analog to digital). DAC = hands (digital to analog).\nResolution = Full-Scale / 2^n. 8-bit over 5V ≈ 19.5 mV per step.";
+    } else if (l.includes("help") || l.includes("what can") || l.includes("topics") || l.includes("class") || l.includes("teach")) {
+      reply = "I teach CSC 106 like a class. Try:\n• Explain 2's complement like a class\n• How does ALE work?\n• Polling vs interrupts vs DMA\n• Full vs partial decoding\n• Von Neumann vs Harvard\n• 8085 flags and the INR trap\n• ADC/DAC in a control loop";
+    } else {
+      reply = "Ask me to explain any CSC 106 topic like a class. Examples: 2's complement, buses, interrupts, ALE, memory decoding, assembly, flags, ADC/DAC, Von Neumann vs Harvard.";
+    }
+    setTimeout(() => setTutorMessages((m) => [...m, { role: "ai", text: reply }]), 400);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
@@ -173,17 +204,6 @@ export default function Home() {
                 <p className="text-sm text-slate-500 mt-1">{QUESTIONS.length}+ questions · Easy → Extra Hard</p>
               </button>
             </div>
-            {stats.attempts.length > 0 && (
-              <div className="bg-white rounded-xl border p-5">
-                <h3 className="font-semibold mb-3">Recent Attempts</h3>
-                {stats.attempts.slice(0, 5).map((a) => (
-                  <div key={a.id} className="flex justify-between py-2 border-b last:border-0">
-                    <span className="text-sm">{a.topic}</span>
-                    <span className={`font-bold ${a.score >= 70 ? "text-emerald-600" : "text-amber-600"}`}>{a.score}%</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -400,32 +420,16 @@ export default function Home() {
 
         {view === "tutor" && (
           <div className="max-w-3xl mx-auto flex flex-col h-[70vh]">
-            <h2 className="text-xl font-bold mb-2">AI Tutor</h2>
+            <h2 className="text-xl font-bold mb-2">AI Tutor — Class Mode</h2>
+            <p className="text-sm text-slate-500 mb-3">Ask me to teach any CSC 106 topic like a full class lesson.</p>
             <div className="flex-1 bg-white rounded-xl border p-4 overflow-y-auto space-y-3">
               {tutorMessages.map((m, i) => (
-                <div key={i} className={`max-w-[85%] rounded-lg px-4 py-2 text-sm ${m.role === "user" ? "ml-auto bg-blue-600 text-white" : "bg-slate-100"}`}>{m.text}</div>
+                <div key={i} className={`max-w-[90%] rounded-lg px-4 py-2 text-sm whitespace-pre-line ${m.role === "user" ? "ml-auto bg-blue-600 text-white" : "bg-slate-100 text-slate-800"}`}>{m.text}</div>
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <input value={tutorInput} onChange={(e) => setTutorInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (() => {
-                if (!tutorInput.trim()) return;
-                const msg = tutorInput.trim();
-                setTutorMessages((m) => [...m, { role: "user", text: msg }]);
-                setTutorInput("");
-                let reply = "Ask about buses, 2's complement, interrupts, memory decoding, or any question from the bank.";
-                const l = msg.toLowerCase();
-                if (l.includes("2's") || l.includes("complement")) reply = "2's complement lets subtraction become addition. Range for 8-bit is -128 to +127.";
-                else if (l.includes("polling") || l.includes("interrupt")) reply = "Polling wastes CPU time. Interrupts only notify when data is ready.";
-                else if (l.includes("data bus")) reply = "Data Bus is bidirectional because data travels both ways. Address Bus is unidirectional.";
-                setTimeout(() => setTutorMessages((m) => [...m, { role: "ai", text: reply }]), 500);
-              })()} placeholder="Ask a question…" className="flex-1 px-4 py-2.5 border rounded-lg text-sm" />
-              <button onClick={() => {
-                if (!tutorInput.trim()) return;
-                const msg = tutorInput.trim();
-                setTutorMessages((m) => [...m, { role: "user", text: msg }]);
-                setTutorInput("");
-                setTimeout(() => setTutorMessages((m) => [...m, { role: "ai", text: "I can explain any CSC 106 concept. Try: Why is the data bus bidirectional? or What is 2's complement?" }]), 500);
-              }} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm">Send</button>
+              <input value={tutorInput} onChange={(e) => setTutorInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && askTutor()} placeholder="e.g. Explain 2's complement like a class…" className="flex-1 px-4 py-2.5 border rounded-lg text-sm" />
+              <button onClick={askTutor} className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm">Send</button>
             </div>
           </div>
         )}
