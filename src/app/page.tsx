@@ -21,6 +21,7 @@ export default function Home() {
   const [practiceAnswer, setPracticeAnswer] = useState<string | null>(null);
   const [showSolution, setShowSolution] = useState(false);
   const [filterTopic, setFilterTopic] = useState("all");
+  const [filterDiff, setFilterDiff] = useState("all");
   const [search, setSearch] = useState("");
   const [uploadStep, setUploadStep] = useState(0);
   const [uploadDone, setUploadDone] = useState(false);
@@ -79,9 +80,15 @@ export default function Home() {
     setView("results");
   }, [examQuestions, answers, marked, examStartTime]);
 
-  const startExam = (count: number, topic: string, mins: number) => {
-    let pool = topic === "all" ? [...QUESTIONS] : QUESTIONS.filter((q) => q.topic === topic);
-    pool = pool.sort(() => Math.random() - 0.5).slice(0, Math.min(count, pool.length));
+  const startExam = (count: number, topic: string, mins: number, difficulty: string = "all") => {
+    let pool = [...QUESTIONS];
+    if (topic !== "all") pool = pool.filter((q) => q.topic === topic);
+    if (difficulty !== "all") pool = pool.filter((q) => q.difficulty === difficulty);
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    pool = pool.slice(0, Math.min(count, pool.length));
     setExamQuestions(pool);
     setCurrentIdx(0); setAnswers({}); setMarked(new Set());
     setTimerEnabled(mins > 0); setTimeLeft(mins * 60); setExamStartTime(Date.now());
@@ -99,9 +106,10 @@ export default function Home() {
 
   const filteredBank = useMemo(() => QUESTIONS.filter((q) => {
     if (filterTopic !== "all" && q.topic !== filterTopic) return false;
+    if (filterDiff !== "all" && q.difficulty !== filterDiff) return false;
     if (search && !q.text.toLowerCase().includes(search.toLowerCase()) && !q.number.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }), [filterTopic, search]);
+  }), [filterTopic, filterDiff, search]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -162,7 +170,7 @@ export default function Home() {
               </button>
               <button onClick={() => setView("bank")} className="p-5 bg-white border rounded-xl text-left">
                 <p className="font-semibold">Question Bank</p>
-                <p className="text-sm text-slate-500 mt-1">{QUESTIONS.length} questions</p>
+                <p className="text-sm text-slate-500 mt-1">{QUESTIONS.length}+ questions · Easy → Extra Hard</p>
               </button>
             </div>
             {stats.attempts.length > 0 && (
@@ -194,14 +202,26 @@ export default function Home() {
               </select>
             </div>
             <div>
+              <label className="text-sm font-medium">Difficulty</label>
+              <select id="qdiff" className="w-full mt-1 px-3 py-2 border rounded-lg">
+                <option value="all">All levels (mixed)</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                <option value="extra-hard">Extra Hard</option>
+              </select>
+            </div>
+            <div>
               <label className="text-sm font-medium">Timer (minutes, 0 = off)</label>
               <input type="number" id="qtimer" defaultValue={30} min={0} className="w-full mt-1 px-3 py-2 border rounded-lg" />
             </div>
+            <p className="text-xs text-slate-500">{QUESTIONS.length} questions available · shuffled every exam</p>
             <button onClick={() => {
               const count = Number((document.getElementById("qcount") as HTMLInputElement).value) || 10;
               const topic = (document.getElementById("qtopic") as HTMLSelectElement).value;
               const mins = Number((document.getElementById("qtimer") as HTMLInputElement).value) || 0;
-              startExam(count, topic, mins);
+              const diff = (document.getElementById("qdiff") as HTMLSelectElement).value;
+              startExam(count, topic, mins, diff);
             }} className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg">Start Exam</button>
           </div>
         )}
@@ -343,6 +363,13 @@ export default function Home() {
               <select value={filterTopic} onChange={(e) => setFilterTopic(e.target.value)} className="px-3 py-2 border rounded-lg text-sm">
                 <option value="all">All topics</option>
                 {TOPICS.map((t) => <option key={t} value={t}>{t.slice(0, 40)}</option>)}
+              </select>
+              <select value={filterDiff} onChange={(e) => setFilterDiff(e.target.value)} className="px-3 py-2 border rounded-lg text-sm">
+                <option value="all">All difficulties</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+                <option value="extra-hard">Extra Hard</option>
               </select>
             </div>
             <div className="space-y-3">
